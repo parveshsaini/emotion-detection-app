@@ -21,7 +21,7 @@ export const renderPredictions = (predictions, ctx) => {
       ctx.fillRect(x, y, textWidth + 4, textHeight + 4);
   
       ctx.fillStyle = "#000000";
-      ctx.fillText(`${text} ${(accuracy * 100 )- 17}%`, x, y);
+      ctx.fillText(`${text} `, x, y);
     });
   };
   

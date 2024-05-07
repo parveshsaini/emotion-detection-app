@@ -1,14 +1,22 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useContext } from "react";
 import Webcam from "react-webcam";
 import * as faceDetection from "face-api.js";
 import { renderPredictions } from "@/utils/render-predictions";
 import { Client, Message } from 'paho-mqtt';
+import axios from "axios";
 let detectInterval;
+
+import { UserContext } from "@/helpers/context";
+
+let topic;
 
 const FacialExpressionDetection = () => {
   const [isLoading, setIsLoading] = useState(true);
+
+  const contextUser = useContext(UserContext);
+
 
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
@@ -24,6 +32,20 @@ const FacialExpressionDetection = () => {
       runFacialExpressionDetection();
     }, 500);
   }
+
+  const [user, setUser]= useState()
+
+  const getDetails= async ()=> {
+    const res= await axios.get('/api/users/me')
+    console.log(res.data.data.username)
+
+    return res.data.data.username
+  }
+
+  useEffect(() => {
+    const userName= getDetails()
+    setUser(userName)
+  }, [])
 
   
   async function loadModels() {
@@ -51,7 +73,7 @@ const FacialExpressionDetection = () => {
       detections.forEach((detection) => {
         const expression = detection.expressions.asSortedArray()[0].expression;
         const message = new Message(expression);
-        message.destinationName = 'parvesh-saini-topic';
+        message.destinationName = `${contextUser}-iot-group-2`;
         if (client.isConnected()) {
           client.send(message);
         }

@@ -2,7 +2,7 @@ import { connect } from "@/db/config";
 import User from "@/model/child.model";
 import { NextResponse } from "next/server";
 import bcryptjs from "bcryptjs";
-
+import jwt from "jsonwebtoken";
 connect()
 
 export async function POST(request){
@@ -31,12 +31,27 @@ export async function POST(request){
         const savedUser = await newUser.save()
         console.log(savedUser);
 
+        const dbUser= await User.findOne({username})
 
-        return NextResponse.json({
-            message: "User created successfully",
+        const tokenData = {
+            id: dbUser._id,
+            username: dbUser.username
+        }
+
+        console.log("db user", dbUser.username)
+
+        //create token
+        const token = jwt.sign(tokenData, process.env.TOKEN_SECRET, {expiresIn: "1d"})
+
+        const response = NextResponse.json({
+            message: "Signup successful",
             success: true,
-            savedUser
         })
+        response.cookies.set("token", token, {
+            httpOnly: true,   
+        })
+        return response;
+
  
     } catch (error) {
         return NextResponse.json({error: error.message}, {status: 500})
