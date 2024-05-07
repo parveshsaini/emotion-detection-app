@@ -2,9 +2,9 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import Webcam from "react-webcam";
-import * as faceapi from "face-api.js";
+import * as faceDetection from "face-api.js";
 import { renderPredictions } from "@/utils/render-predictions";
-
+import { Client, Message } from 'paho-mqtt';
 let detectInterval;
 
 const FacialExpressionDetection = () => {
@@ -13,15 +13,25 @@ const FacialExpressionDetection = () => {
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
 
+  const client = new Client("broker.hivemq.com", 8000, 'childClient');
+
+  client.connect({ onSuccess: onConnect });
+
+  function onConnect() {
+    console.log('Publisher connected'); 
+  
+    detectInterval = setInterval(() => {
+      runFacialExpressionDetection();
+    }, 500);
+  }
+
+  
   async function loadModels() {
     setIsLoading(true); 
-    await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-    await faceapi.nets.faceExpressionNet.loadFromUri('/models');
+    await faceDetection.nets.tinyFaceDetector.loadFromUri('/models');
+    await faceDetection.nets.faceExpressionNet.loadFromUri('/models');
     setIsLoading(false); 
 
-    detectInterval = setInterval(() => {
-      runFacialExpressionDetection(); 
-    }, 0);
   }
 
   async function runFacialExpressionDetection() {
@@ -34,8 +44,18 @@ const FacialExpressionDetection = () => {
       canvasRef.current.height = webcamRef.current.video.videoHeight;
 
       // find detected faces
-      const detections = await faceapi.detectAllFaces(webcamRef.current.video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
-      console.log(detections);
+      const detections = await faceDetection.detectAllFaces(webcamRef.current.video, new faceDetection.TinyFaceDetectorOptions()).withFaceExpressions();
+      // console.log(detections);
+
+      // publish detected expressions
+      detections.forEach((detection) => {
+        const expression = detection.expressions.asSortedArray()[0].expression;
+        const message = new Message(expression);
+        message.destinationName = 'parvesh-saini-topic';
+        if (client.isConnected()) {
+          client.send(message);
+        }
+      });
 
       // render predictions
       const context = canvasRef.current.getContext("2d");
