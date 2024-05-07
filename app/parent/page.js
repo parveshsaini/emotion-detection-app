@@ -1,53 +1,75 @@
 "use client"
 
 import React, { useContext, useEffect, useState } from 'react';
-import { Client, Message } from 'paho-mqtt';
+import mqtt from 'mqtt';
 import { UserContext } from '@/helpers/context';
 
-
 const Parent = () => {
+  const [client, setClient] = useState(null);
   const [expression, setExpression] = useState('');
   const [expressionCounts, setExpressionCounts] = useState({});
 
   const contextUser = useContext(UserContext);
 
-
   useEffect(() => {
-    const client = new Client("broker.hivemq.com", 8000,  'parentClient');
-
-    client.onConnectionLost = onConnectionLost;
-    client.onMessageArrived = onMessageArrived;
-
-    client.connect({ onSuccess: onConnect });
-
-    function onConnect() {
-      console.log('Parent connected');
-      client.subscribe(`${contextUser}-iot-group-2`);
-      console.log(` parent subscriberd to  ${contextUser}-iot-group-2`)
-    }
-
-    function onConnectionLost(responseObject) {
-      if (responseObject.errorCode !== 0) {
-        console.log('onConnectionLost:', responseObject.errorMessage);
+    
+      var options = {
+        username: process.env.NEXT_PUBLIC_MQTT_USERNAME,
+        password: process.env.NEXT_PUBLIC_MQTT_PASSWORD
       }
-    }
+      const client = mqtt.connect('wss://fc57981881384bd383e7bd8b3ee78a9e.s1.eu.hivemq.cloud:8884/mqtt',options);
+      setClient(client);
 
-    function onMessageArrived(message) {
-      console.log('onMessageArrived:', message.payloadString);
-      setExpression(message.payloadString);
+      client.on('connect', () => {
+        console.log('Parent connected');
+        client.subscribe(`${contextUser}-iot-group-2`);
+        console.log(` parent subscribed to  ${contextUser}-iot-group-2`);
+      });
 
-      // Update the count of the current expression
-      setExpressionCounts(prevCounts => ({
-        ...prevCounts,
-        // mp[angry]+1
-        [message.payloadString]: (prevCounts[message.payloadString] || 0) + 1
-      }));
-    }
+      client.on('message', function (topic, message) {
+        // called each time a message is received
+        console.log('Received message:', topic, message.toString());
+        setExpression(message.toString());
 
-    return () => {
-      client.disconnect();
-    };
-  }, [contextUser]);
+        // Update the count of the current expression
+        setExpressionCounts(prevCounts => ({
+          ...prevCounts,
+          // mp[angry]+1
+          [message.toString()]: (prevCounts[message.toString()] || 0) + 1
+        }));
+      });
+
+      
+    }, [contextUser]);
+
+  // useEffect(() => {
+  //   if (client) {
+  //     client.on('connect', () => {
+  //       console.log('Parent connected');
+  //       client.subscribe(`${contextUser}-iot-group-2`);
+  //       console.log(` parent subscribed to  ${contextUser}-iot-group-2`);
+  //     });
+
+  //     client.on('message', function (topic, message) {
+  //       // called each time a message is received
+  //       console.log('Received message:', topic, message.toString());
+  //       setExpression(message.toString());
+
+  //       // Update the count of the current expression
+  //       setExpressionCounts(prevCounts => ({
+  //         ...prevCounts,
+  //         // mp[angry]+1
+  //         [message.toString()]: (prevCounts[message.toString()] || 0) + 1
+  //       }));
+  //     });
+
+      
+
+  //     return () => {
+  //       client.end();
+  //     };
+  //   }
+  // }, [client, contextUser]);
 
 
   const totalCount = Object.values(expressionCounts).reduce((a, b) => a + b, 0);
