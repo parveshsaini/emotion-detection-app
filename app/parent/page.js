@@ -3,9 +3,11 @@
 import React, { useEffect, useState } from 'react';
 import { Client, Message } from 'paho-mqtt';
 
+
 const Parent = () => {
   const [expression, setExpression] = useState('');
   const [expressionCounts, setExpressionCounts] = useState({});
+
 
   useEffect(() => {
     const client = new Client("broker.hivemq.com", 8000,  'parentClient');
@@ -56,6 +58,7 @@ const Parent = () => {
           <p key={expression} className="text-lg">{expression}: <span className="font-semibold">{((count / totalCount) * 100).toFixed(2)}%</span></p>
         ))}
       </div>
+      <button onClick={getUserDetails}>Get User Details</button>
     </div>
   );
 };
